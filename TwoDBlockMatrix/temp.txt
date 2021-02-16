@@ -1,0 +1,307 @@
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Scanner;
+import java.util.StringTokenizer;
+import java.util.Vector;
+
+
+class SubBlockNotFoundException extends Exception{
+	public SubBlockNotFoundException(String s)
+	{
+	// Call constructor of parent Exception
+		super(s);
+		}
+}
+
+class IncompatibleDimensionException extends Exception{
+	public IncompatibleDimensionException(String s)
+	{
+	// Call constructor of parent Exception
+		super(s);
+		}
+}
+
+class InverseDoesNotExistException extends Exception{
+	public InverseDoesNotExistException(String s)
+	{
+	// Call constructor of parent Exception
+		super(s);
+		}
+}
+
+
+public class TwoDBlockMatrix {
+	public float[][] arfield;
+	
+	public static float[] stringArrayToFloatArray( String[] s, int x) {
+		float[] finale = new float[x];
+		int n = s.length;
+		for(int i =0; i < n; i++) {
+			float y = Float.parseFloat(s[i]);
+			finale[i] = y;
+		}
+		return finale;
+	}
+	
+	public float Determinant(float[][] array) {
+			float det = 0;
+			int w = 1;
+			int u = array.length;
+			if(u == 1) {
+				return array[0][0];
+			}
+			if ( u == 2) {
+				return (array[0][0]*array[1][1]) - (array[0][1]*array[1][0]);
+			}
+			else {
+				for(int i = 0; i < u; i++) {
+						det += w*array[0][i]*Determinant(DetHelper(array, 1, i+1));
+						w *= -1;
+				}
+			}
+			//System.out.println(det);
+			return det;
+	}
+	
+	public float[][] DetHelper (float[][] array, int x, int y){
+		int n = array.length;
+		float[][] bharo = new float[n-1][n-1]; 
+		for(int i = 0; i < x-1; i++) {
+			for(int j = 0; j < y-1; j++) {
+				float item = array[i][j];
+				bharo[i][j] = item;
+			}				
+		}
+		for(int i  = 0; i < x-1; i++) {
+			for (int j = y; j < n; j++) {
+				float item = array[i][j];
+				bharo[i][j-1] = item;
+			}
+		}
+		for(int i = x; i < n ; i++) {
+			for(int j = 0; j < y-1; j++) {
+				float item = array[i][j];
+				bharo[i-1][j] = item;
+			}
+		}
+		for(int i = x; i < n; i++) {
+			for(int j = y; j < n; j++) {
+				float item = array[i][j];
+				bharo[i-1][j-1] = item;
+			}
+		}
+//		for (int i = 0; i < bharo.length; ++i) { //ye hai printing wala
+//	        for(int j = 0; j < bharo[i].length; ++j) {
+//	           System.out.print(bharo[i][j] + " ");
+//	        }
+//	        System.out.println("\n");
+//	     }
+		return bharo;
+	}
+	
+	public TwoDBlockMatrix inverse() throws InverseDoesNotExistException {
+		float det = Determinant(arfield);
+		int x = arfield.length;
+		int y = arfield[0].length;
+		if( det != 0  && x == y) {
+			int n = arfield.length;
+			int w = 1;
+			float[][] poop = new float[n][n];
+			float[][] inv = new float[n][n];
+			for (int i = 0; i < n; i++) {
+				for(int j = 0; j < n; j++) {
+					poop[i][j] = w*Determinant(DetHelper(arfield, i+1, j+1));
+					w *= -1;
+				}			
+			}
+			for(int i = 0; i < n; i++) {
+				for(int j = 0; j < n; j++) {
+					poop[i][j] /= det; 
+				}
+			}
+			TwoDBlockMatrix d = new TwoDBlockMatrix(poop);
+			TwoDBlockMatrix e = new TwoDBlockMatrix(inv);
+			e = d.transpose();
+//			for (int i = 0; i < e.arfield.length; ++i) { //ye hai printing wala
+//		        for(int j = 0; j < e.arfield[i].length; ++j) {
+//		           System.out.print(e.arfield[i][j] + " ");
+//		        }
+//		        System.out.println("\n");
+//		     }
+			return e;
+		}else {
+			throw new InverseDoesNotExistException("Inverse doesn't exist");
+		}
+	}
+
+	public TwoDBlockMatrix multiply(TwoDBlockMatrix other) throws IncompatibleDimensionException {
+		if(arfield[0].length == other.arfield.length) {
+			int n = arfield.length;
+			int m = other.arfield[0].length;
+			float[][] poop = new float[n][m];
+			for(int i = 0; i< arfield.length; i++) {
+				for(int j = 0; j < other.arfield[0].length; j++) {
+					float sum = 0;
+					for(int k = 0; k < arfield[0].length; k++) {
+						sum += arfield[i][k]*other.arfield[k][j];
+					}
+					poop[i][j] = sum;
+//					sum = 0;
+				}
+			}
+			for (int i = 0; i < poop.length; ++i) { //ye hai printing wala
+		        for(int j = 0; j < poop[i].length; ++j) {
+		           System.out.print(poop[i][j] + " ");
+		        }
+		        System.out.println("\n");
+		     }
+			TwoDBlockMatrix d = new TwoDBlockMatrix(poop);
+			return d;
+		}else {
+			throw new IncompatibleDimensionException("the dimensions are not compatible");			
+		}
+	}
+	
+ 	public static TwoDBlockMatrix buildTwoDBlockMatrix(InputStream in) {
+		
+		try{
+			float[][] arr;
+			int content;
+			String content_str = "";
+			while ((content = in.read()) != -1) {
+				content_str = content_str + (char)content;
+			}
+			Scanner sc = new Scanner(content_str);
+			int totalRows = 0;
+			int totalColumns = 0;
+			int rows = 0;
+			int columns = 0;
+			Vector<float[]> vec = new Vector<float[]>();
+			ArrayList<float[]> dec = new ArrayList<float[]>();
+			while(sc.hasNextLine()) {
+				int r = sc.nextInt();
+				int c = sc.nextInt();
+				
+				rows = r - 1;
+				columns = c;
+				sc.nextLine();
+				float[] f ;
+				String s = sc.nextLine();
+				//System.out.println(columns);
+				while(!s.equals("#")) {
+					String[] waste = s.split(" ");
+					//System.out.println(Arrays.toString(waste));
+					char lol = waste[waste.length-1].charAt(0);
+					String sus = waste[waste.length-1].substring(0, waste[waste.length-1].length() - 1);
+					waste[waste.length-1] = sus;
+					//System.out.println(waste[0] + " " + waste[1]);
+					f = new float[waste.length]; 
+					f = stringArrayToFloatArray(waste, waste.length);
+					//System.out.println(Arrays.toString(f));
+					vec.add(f);
+					rows++;
+					//System.out.println(r + " " + c);
+					//System.out.println(r + " " + c);	
+					for(int i = 0; i < f.length; i++) {
+						float[] ff = new float[3];
+						int z = columns + i;
+						//System.out.println(rows + " " + z + " " + f[i]);						
+						ff[0] = rows;
+						ff[1] = z;
+						ff[2] = f[i];
+						//System.out.println(Arrays.toString(ff));
+						dec.add(ff);						
+					}
+					//
+					s = sc.nextLine();
+				}
+			}
+			for(int i = 0; i < dec.size(); i++) {
+				int a = (int) dec.get(i)[0];
+				int b = (int) dec.get(i)[1];
+				if(totalRows < a) { totalRows = a;}
+				if(totalColumns < b) { totalColumns = b;}
+				
+			}
+			//System.out.println(totalRows + " " + totalColumns);
+			arr = new float[totalRows][totalColumns];
+			for(int i = 0; i < dec.size(); i++) {
+				float[] fff = dec.get(i);
+				//System.out.println(fff[0] + " " + fff[1] + " " + fff[2]);
+				arr[(int) fff[0] -1][(int) fff[1] -1] = fff[2];
+			}
+//			for (int i = 0; i < arr.length; ++i) { //ye hai printing wala
+//		        for(int j = 0; j < arr[i].length; ++j) {
+//		           System.out.print(arr[i][j] + " ");
+//		        }
+//		        System.out.println("\n");
+//		     }
+			//float w = Determinant(arr);
+			//System.out.println(w);
+			TwoDBlockMatrix d = new TwoDBlockMatrix(arr);
+			return d;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return null;
+		} 
+//		TwoDBlockMatrix d = new TwoDBlockMatrix(arr);
+//		return d;
+		
+	}
+	
+	public TwoDBlockMatrix(float[][] array) {
+		this.arfield = array;		
+	}
+	
+	public TwoDBlockMatrix transpose() {
+		int row = arfield.length;
+		//System.out.println(arfield[0][1]);
+		int cols = arfield[0].length;
+		//System.out.println(row + " " + cols);
+		float[][] trans = new float[cols][row];
+		for (int i = 0; i < row; i++) {
+			for(int j = 0; j < cols; j++) {
+				float x = arfield[i][j];
+				trans[j][i] = x;
+			}
+		}
+//		for (int i = 0; i < trans.length; ++i) { //ye hai printing wala
+//	        for(int j = 0; j < trans[i].length; ++j) {
+//	           System.out.print(trans[i][j] + " ");
+//	        }
+//	        System.out.println("\n");
+//	     }
+		TwoDBlockMatrix d = new TwoDBlockMatrix(trans);
+		return d;
+	}
+	
+	public String toString() {
+		return " ";
+	}
+	
+	public TwoDBlockMatrix getSubBlock ( int row_start, int col_start, int row_end, int col_end) throws SubBlockNotFoundException {
+		//yaha exception bana
+		if( row_end> row_start && col_end>col_start && row_start > 0 && col_start > 0 && row_end <= arfield.length + 1 && col_end <= arfield[0].length + 1) {
+			float[][] fil = new float[row_end - row_start][col_end - col_start];
+			for(int i = row_start - 1; i < row_end - 1; i++ ) {
+				for(int j = col_start - 1; j < col_end - 1; j++) {
+					float x = arfield[i][j];
+					fil[i - (row_start - 1)][j - (col_start - 1)] = x;
+				}
+			}
+//			for (int i = 0; i < fil.length; ++i) { //ye hai printing wala
+//		        for(int j = 0; j < fil[i].length; ++j) {
+//		           System.out.print(fil[i][j] + " ");
+//		        }
+//		        System.out.println("\n");
+//		     }
+			TwoDBlockMatrix d = new TwoDBlockMatrix(fil);
+			return d;
+		}else {
+			throw new SubBlockNotFoundException("sub block not found!");
+		}
+	}
+}
